@@ -17,7 +17,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _correoController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   bool _mostrarPassword = false;
   bool _mostrarConfirmPassword = false;
 
@@ -77,10 +77,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     return Scaffold(
       backgroundColor: LoginovaColors.background,
-      appBar: AppBar(
-        title: const Text('Restablecer Contraseña'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Restablecer Contraseña'), elevation: 0),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(
@@ -125,7 +122,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: LoginovaColors.warning.withOpacity(0.1),
+            color: LoginovaColors.warning.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
@@ -137,16 +134,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 20),
         Text(
           'Restablecer tu contraseña',
-          style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                color: LoginovaColors.primary,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.displaySmall?.copyWith(color: LoginovaColors.primary),
         ),
         const SizedBox(height: 8),
         Text(
           'Ingresa tu correo y define una nueva contraseña',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: LoginovaColors.textSecondary,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: LoginovaColors.textSecondary),
         ),
       ],
     );
@@ -194,9 +191,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 _mostrarPassword ? Icons.visibility : Icons.visibility_off,
                 color: LoginovaColors.textSecondary,
               ),
-              onPressed: () => setState(
-                () => _mostrarPassword = !_mostrarPassword,
-              ),
+              onPressed: () =>
+                  setState(() => _mostrarPassword = !_mostrarPassword),
             ),
           ),
           validator: (value) {
@@ -224,7 +220,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             prefixIconColor: LoginovaColors.primary,
             suffixIcon: IconButton(
               icon: Icon(
-                _mostrarConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                _mostrarConfirmPassword
+                    ? Icons.visibility
+                    : Icons.visibility_off,
                 color: LoginovaColors.textSecondary,
               ),
               onPressed: () => setState(
@@ -260,8 +258,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         width: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : const Text(
@@ -297,87 +296,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           Text(
             '¿Recuerdas tu contraseña? ',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: LoginovaColors.textSecondary,
-                ),
+              color: LoginovaColors.textSecondary,
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Inicia Sesión'),
           ),
         ],
-      ),
-    );
-  }
-}
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Ingresa tu correo y una nueva contraseña.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _correoController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Correo',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Ingresa tu correo';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Correo inválido';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Nueva contraseña',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Ingresa una contraseña';
-                  }
-                  if (value.length < 8) {
-                    return 'La contraseña debe tener al menos 8 caracteres';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              Consumer<AuthProvider>(
-                builder: (context, auth, _) {
-                  return SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: auth.cargando ? null : restablecer,
-                      child: Text(
-                        auth.cargando
-                            ? 'Restableciendo...'
-                            : 'Restablecer contraseña',
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
-              TextButton(
-                onPressed: () => Navigator.pushReplacementNamed(context, '/'),
-                child: const Text('Volver al login'),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
