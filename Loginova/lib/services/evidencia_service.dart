@@ -36,4 +36,31 @@ class EvidenciaService {
 
     return Evidencia.fromJson(jsonDecode(response.body));
   }
+
+  /// Obtiene las evidencias asociadas a una recogida.
+  Future<List<Evidencia>> obtenerEvidenciasPorRecogida(int recogidaId) async {
+    final response = await http.get(
+      Uri.parse('${ApiService.baseUrl}/evidencias/recogida/$recogidaId'),
+      headers: ApiService.jsonHeaders,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('No se pudieron cargar las evidencias de la recogida');
+    }
+
+    final data = jsonDecode(response.body) as List<dynamic>;
+    return data.map((item) => Evidencia.fromJson(item)).toList();
+  }
+
+  /// Elimina una evidencia del servidor por su identificador.
+  Future<void> eliminarEvidencia(int evidenciaId) async {
+    final response = await http.delete(
+      Uri.parse('${ApiService.baseUrl}/evidencias/$evidenciaId'),
+      headers: ApiService.jsonHeaders,
+    );
+
+    if (response.statusCode != 204) {
+      throw Exception('No se pudo eliminar la evidencia');
+    }
+  }
 }

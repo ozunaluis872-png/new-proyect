@@ -5,6 +5,7 @@ namespace LoginovaAPI.Models;
 [Table("recogidas")]
 public class Recogida
 {
+    [Column("id")]
     public int Id { get; set; }
 
     [Column("cliente_id")]

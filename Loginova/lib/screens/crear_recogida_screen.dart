@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/cliente.dart';
@@ -56,7 +56,7 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
           Provider.of<RecogidaProvider>(context, listen: false);
 
       if (auth.usuario == null) {
-        throw Exception('Sesión inválida');
+        throw Exception('SesiÃ³n invÃ¡lida');
       }
 
       // Crear cliente
@@ -126,19 +126,19 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Sección de cliente
-                _buildSectionTitle('Información del Cliente'),
+                // SecciÃ³n de cliente
+                _buildSectionTitle('InformaciÃ³n del Cliente'),
                 const SizedBox(height: 16),
                 _buildClienteFields(),
                 const SizedBox(height: 32),
 
-                // Sección de recogida
+                // SecciÃ³n de recogida
                 _buildSectionTitle('Detalles de la Recogida'),
                 const SizedBox(height: 16),
                 _buildRecogidaFields(),
                 const SizedBox(height: 32),
 
-                // Botones de acción
+                // Botones de acciÃ³n
                 _buildActionButtons(),
                 const SizedBox(height: 16),
               ],
@@ -149,7 +149,7 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
     );
   }
 
-  /// Construye el título de una sección
+  /// Construye el tÃ­tulo de una secciÃ³n
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
@@ -188,13 +188,13 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
           textInputAction: TextInputAction.next,
           keyboardType: TextInputType.phone,
           decoration: InputDecoration(
-            labelText: 'Teléfono',
+            labelText: 'TelÃ©fono',
             hintText: 'Ej: +34 123 456 789',
             prefixIcon: const Icon(Icons.phone),
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Por favor ingresa el teléfono';
+              return 'Por favor ingresa el telÃ©fono';
             }
             return null;
           },
@@ -204,13 +204,13 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
           controller: _direccionController,
           textInputAction: TextInputAction.next,
           decoration: InputDecoration(
-            labelText: 'Dirección',
+            labelText: 'DirecciÃ³n',
             hintText: 'Ej: Calle Principal 123',
             prefixIcon: const Icon(Icons.location_on),
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Por favor ingresa la dirección';
+              return 'Por favor ingresa la direcciÃ³n';
             }
             return null;
           },
@@ -254,7 +254,7 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
             }
             final cantidad = int.tryParse(value);
             if (cantidad == null || cantidad <= 0) {
-              return 'Ingresa un número válido mayor a 0';
+              return 'Ingresa un nÃºmero vÃ¡lido mayor a 0';
             }
             return null;
           },
@@ -275,7 +275,7 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
     );
   }
 
-  /// Construye los botones de acción
+  /// Construye los botones de acciÃ³n
   Widget _buildActionButtons() {
     return Row(
       children: [
@@ -302,151 +302,6 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
           ),
         ),
       ],
-    );
-  }
-}
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    clienteController.dispose();
-    telefonoController.dispose();
-    direccionController.dispose();
-    ciudadController.dispose();
-    paquetesController.dispose();
-    observacionesController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Nueva Recogida')),
-
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: clienteController,
-                decoration: const InputDecoration(
-                  labelText: 'Cliente',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Ingresa el nombre del cliente';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 15),
-
-              TextFormField(
-                controller: telefonoController,
-                decoration: const InputDecoration(
-                  labelText: 'Telefono',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Ingresa el telefono del cliente';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 15),
-
-              TextFormField(
-                controller: direccionController,
-                decoration: const InputDecoration(
-                  labelText: 'Direccion',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Ingresa la direccion';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 15),
-
-              TextFormField(
-                controller: ciudadController,
-                decoration: const InputDecoration(
-                  labelText: 'Ciudad',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Ingresa la ciudad';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 15),
-
-              TextFormField(
-                controller: paquetesController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Cantidad de paquetes',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Ingresa la cantidad de paquetes';
-                  }
-                  final parsed = int.tryParse(value);
-                  if (parsed == null || parsed < 0) {
-                    return 'Ingresa un numero valido';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 15),
-
-              TextFormField(
-                controller: observacionesController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Observaciones',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Ingresa una observacion';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-
-                child: ElevatedButton(
-                  onPressed: guardando ? null : guardar,
-
-                  child: Text(guardando ? 'Guardando...' : 'Guardar Recogida'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

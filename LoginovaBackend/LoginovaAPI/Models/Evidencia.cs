@@ -9,6 +9,7 @@ namespace LoginovaAPI.Models;
 public class Evidencia
 {
     /// <summary>Identificador unico de la evidencia.</summary>
+    [Column("id")]
     public int Id { get; set; }
 
     /// <summary>Identificador de la recogida asociada.</summary>

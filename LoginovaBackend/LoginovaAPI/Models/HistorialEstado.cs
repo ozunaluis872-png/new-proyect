@@ -9,6 +9,7 @@ namespace LoginovaAPI.Models;
 public class HistorialEstado
 {
     /// <summary>Identificador unico del registro historico.</summary>
+    [Column("id")]
     public int Id { get; set; }
 
     /// <summary>Identificador de la recogida cuyo estado cambio.</summary>

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/recogida.dart';
 import '../themes/app_theme.dart';
+import 'editar_recogida_screen.dart';
 import 'evidencia_screen.dart';
 
 /// Pantalla profesional que muestra los detalles completos de una recogida.
@@ -15,12 +16,53 @@ class DetalleRecogidaScreen extends StatefulWidget {
 }
 
 class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
+  late Recogida _recogida;
   late List<String> _evidencias;
 
   @override
   void initState() {
     super.initState();
-    _evidencias = List<String>.from(widget.recogida.evidencias);
+    _recogida = widget.recogida;
+    _evidencias = List<String>.from(_recogida.evidencias);
+  }
+
+  Future<void> _editarRecogida() async {
+    final actualizada = await Navigator.push<Recogida>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditarRecogidaScreen(recogida: _recogida),
+      ),
+    );
+
+    if (actualizada != null && mounted) {
+      setState(() {
+        _recogida = actualizada;
+        _evidencias = List<String>.from(actualizada.evidencias);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Recogida actualizada correctamente')),
+      );
+    }
+  }
+
+  Future<void> _agregarEvidencia() async {
+    final evidenciaPath = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EvidenciaScreen(recogidaId: _recogida.id),
+      ),
+    );
+
+    if (evidenciaPath != null && evidenciaPath.trim().isNotEmpty && mounted) {
+      setState(() {
+        _evidencias = [..._evidencias, evidenciaPath];
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Evidencia agregada correctamente')),
+      );
+    }
   }
 
   /// Obtiene el color según el estado de la recogida
@@ -61,8 +103,8 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final color = _getEstadoColor(widget.recogida.estado);
-    final icon = _getEstadoIcon(widget.recogida.estado);
+    final color = _getEstadoColor(_recogida.estado);
+    final icon = _getEstadoIcon(_recogida.estado);
 
     return Scaffold(
       appBar: AppBar(
@@ -94,7 +136,7 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
                     child: _buildDetailItem(
                       icon: Icons.person,
                       label: 'Cliente ID',
-                      value: '#${widget.recogida.clienteId}',
+                      value: '#${_recogida.clienteId}',
                       color: LoginovaColors.info,
                     ),
                   ),
@@ -103,7 +145,7 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
                     child: _buildDetailItem(
                       icon: Icons.engineering,
                       label: 'Operador ID',
-                      value: '#${widget.recogida.usuarioId}',
+                      value: '#${_recogida.usuarioId}',
                       color: LoginovaColors.secondary,
                     ),
                   ),
@@ -118,7 +160,7 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
               const SizedBox(height: 24),
 
               // Observaciones
-              if (widget.recogida.observaciones.isNotEmpty) ...[
+              if (_recogida.observaciones.isNotEmpty) ...[
                 _buildSectionTitle('Observaciones'),
                 const SizedBox(height: 12),
                 _buildObservacionesCard(),
@@ -147,7 +189,7 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [color, color.withOpacity(0.7)],
+            colors: [color, color.withValues(alpha: 0.7)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -158,7 +200,7 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: Colors.white, size: 32),
@@ -174,7 +216,7 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    widget.recogida.estado,
+                    _recogida.estado,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -201,11 +243,11 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
         ),
         child: Column(
           children: [
-            _buildInfoRow('ID de Recogida', '#${widget.recogida.id}'),
+            _buildInfoRow('ID de Recogida', '#${_recogida.id}'),
             const Divider(height: 16),
             _buildInfoRow(
               'Cantidad de Paquetes',
-              '${widget.recogida.cantidadPaquetes} paquetes',
+              '${_recogida.cantidadPaquetes} paquetes',
             ),
           ],
         ),
@@ -245,8 +287,8 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          border: Border.all(color: color.withOpacity(0.3)),
+          color: color.withValues(alpha: 0.1),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -285,9 +327,9 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: LoginovaColors.secondary.withOpacity(0.1),
+          color: LoginovaColors.secondary.withValues(alpha: 0.1),
           border: Border.all(
-            color: LoginovaColors.secondary.withOpacity(0.3),
+            color: LoginovaColors.secondary.withValues(alpha: 0.3),
           ),
           borderRadius: BorderRadius.circular(12),
         ),
@@ -296,7 +338,7 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: LoginovaColors.secondary.withOpacity(0.2),
+                color: LoginovaColors.secondary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -317,7 +359,7 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${widget.recogida.cantidadPaquetes}',
+                    '${_recogida.cantidadPaquetes}',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           color: LoginovaColors.secondary,
                           fontWeight: FontWeight.bold,
@@ -338,8 +380,8 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.orange.withOpacity(0.1),
-          border: Border.all(color: Colors.orange.withOpacity(0.3)),
+          color: Colors.orange.withValues(alpha: 0.1),
+          border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -359,7 +401,7 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              widget.recogida.observaciones,
+              _recogida.observaciones,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
@@ -390,7 +432,7 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
               Icon(
                 Icons.image_not_supported,
                 size: 48,
-                color: LoginovaColors.textSecondary.withOpacity(0.5),
+                color: LoginovaColors.textSecondary.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 12),
               Text(
@@ -446,83 +488,37 @@ class _DetalleRecogidaScreenState extends State<DetalleRecogidaScreen> {
 
   /// Construye los botones de acción
   Widget _buildActionButtons() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Volver'),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton.icon(
-            icon: const Icon(Icons.add_a_photo),
-            label: const Text('Evidencia'),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => EvidenciaScreen(recogida: widget.recogida),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.arrow_back),
+                label: const Text('Volver'),
+                onPressed: () => Navigator.pop(context),
               ),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-                    final url = evidencias[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: ListTile(
-                        title: Text('Evidencia ${index + 1}'),
-                        subtitle: Text(url),
-                        leading: url.startsWith('http')
-                            ? Image.network(url, width: 60, fit: BoxFit.cover)
-                            : File(url).existsSync()
-                            ? Image.file(
-                                File(url),
-                                width: 60,
-                                fit: BoxFit.cover,
-                              )
-                            : const Icon(Icons.photo),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
+            const SizedBox(width: 12),
+            Expanded(
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Agregar Evidencia'),
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-
-                  final saved = await Navigator.push<bool?>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          EvidenciaScreen(recogidaId: widget.recogida.id),
-                    ),
-                  );
-
-                  if (!mounted) return;
-                  if (saved == true) {
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('Evidencia agregada con éxito'),
-                      ),
-                    );
-                  }
-                },
+                icon: const Icon(Icons.add_a_photo),
+                label: const Text('Evidencia'),
+                onPressed: _agregarEvidencia,
               ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Editar Recogida'),
+            onPressed: _editarRecogida,
+          ),
+        ),
+      ],
     );
   }
 }

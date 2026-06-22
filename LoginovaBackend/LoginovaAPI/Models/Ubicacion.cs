@@ -9,6 +9,7 @@ namespace LoginovaAPI.Models;
 public class Ubicacion
 {
     /// <summary>Identificador unico del registro de ubicacion.</summary>
+    [Column("id")]
     public int Id { get; set; }
 
     /// <summary>Identificador del usuario (operador) que registra la ubicacion.</summary>

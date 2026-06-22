@@ -50,10 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.local_shipping),
             label: 'Recogidas',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person),
-            label: 'Perfil',
-          ),
+          NavigationDestination(icon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),
     );
@@ -130,10 +127,7 @@ class DashboardView extends StatelessWidget {
           children: [
             const Text(
               'Bienvenido de vuelta',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
             const SizedBox(height: 8),
             Text(
@@ -147,10 +141,7 @@ class DashboardView extends StatelessWidget {
             const SizedBox(height: 12),
             const Text(
               '¿Listo para gestionar tus recogidas?',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.white70, fontSize: 14),
             ),
           ],
         ),
@@ -224,8 +215,8 @@ class DashboardView extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: color.withOpacity(0.1),
-          border: Border.all(color: color.withOpacity(0.3)),
+          color: color.withValues(alpha: 0.1),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,7 +225,7 @@ class DashboardView extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
+                color: color.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -279,6 +270,15 @@ class DashboardView extends StatelessWidget {
           Icons.list,
           LoginovaColors.secondary,
           () => Navigator.pushNamed(context, '/recogidas'),
+        ),
+        const SizedBox(height: 12),
+        _buildActionButton(
+          context,
+          'Mapa de Recogidas',
+          'Vista general por ubicaciones y estado',
+          Icons.map,
+          LoginovaColors.info,
+          () => Navigator.pushNamed(context, '/mapa'),
         ),
       ],
     );
@@ -330,161 +330,5 @@ class DashboardView extends StatelessWidget {
         Navigator.pushReplacementNamed(context, '/');
       }
     }
-  }
-}
-              leading: const Icon(Icons.local_shipping),
-              title: const Text('Recogidas'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RecogidasScreen()),
-                );
-              },
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.map),
-              title: const Text('Mapa'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const MapaScreen()),
-                );
-              },
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Cerrar Sesion'),
-              onTap: cerrarSesion,
-            ),
-          ],
-        ),
-      ),
-
-      body: Consumer<RecogidaProvider>(
-        builder: (context, provider, _) {
-          final recogidas = provider.recogidas;
-          final evidencias = recogidas.fold<int>(
-            0,
-            (total, item) => total + item.evidencias.length,
-          );
-
-          return RefreshIndicator(
-            onRefresh: provider.cargarRecogidas,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-
-              child: Column(
-                children: [
-                  const Text(
-                    'Dashboard',
-                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  if (provider.error != null)
-                    Text(
-                      provider.error!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  if (_conteoError != null)
-                    Text(
-                      _conteoError!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-
-                  Expanded(
-                    child: GridView.count(
-                      crossAxisCount: 2,
-
-                      crossAxisSpacing: 10,
-
-                      mainAxisSpacing: 10,
-
-                      children: [
-                        DashboardCard(
-                          titulo: 'Recogidas',
-                          valor: provider.cargando
-                              ? '...'
-                              : '${recogidas.length}',
-                          icono: Icons.local_shipping,
-                        ),
-
-                        DashboardCard(
-                          titulo: 'Evidencias',
-                          valor: '$evidencias',
-                          icono: Icons.photo_camera,
-                        ),
-
-                        DashboardCard(
-                          titulo: 'Clientes',
-                          valor: _clienteCount.toString(),
-                          icono: Icons.people,
-                        ),
-
-                        DashboardCard(
-                          titulo: 'Operadores',
-                          valor: _operadoresCount.toString(),
-                          icono: Icons.person,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const RecogidasScreen(),
-                        ),
-                      );
-                    },
-
-                    icon: const Icon(Icons.local_shipping),
-
-                    label: const Text('Gestionar Recogidas'),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const MapaScreen()),
-                      );
-                    },
-
-                    icon: const Icon(Icons.map),
-
-                    label: const Text('Abrir Mapa'),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const PerfilScreen()),
-                      );
-                    },
-
-                    icon: const Icon(Icons.person),
-
-                    label: const Text('Mi Perfil'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
   }
 }

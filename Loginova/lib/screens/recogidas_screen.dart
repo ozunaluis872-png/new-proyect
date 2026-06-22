@@ -6,6 +6,7 @@ import '../providers/recogida_provider.dart';
 import '../themes/app_theme.dart';
 import 'crear_recogida_screen.dart';
 import 'detalle_recogida_screen.dart';
+import 'editar_recogida_screen.dart';
 
 /// Pantalla profesional que muestra la lista de recogidas con filtros y opciones.
 class RecogidasScreen extends StatefulWidget {
@@ -25,6 +26,20 @@ class _RecogidasScreenState extends State<RecogidasScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<RecogidaProvider>(context, listen: false).cargarRecogidas();
     });
+  }
+
+  Future<void> _abrirDetalle(Recogida recogida) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DetalleRecogidaScreen(recogida: recogida),
+      ),
+    );
+
+    if (!mounted) return;
+
+    await Provider.of<RecogidaProvider>(context, listen: false)
+        .cargarRecogidas();
   }
 
   /// Filtra las recogidas según el estado seleccionado
@@ -163,12 +178,7 @@ class _RecogidasScreenState extends State<RecogidasScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => DetalleRecogidaScreen(recogida: recogida),
-          ),
-        ),
+        onTap: () => _abrirDetalle(recogida),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -201,7 +211,7 @@ class _RecogidasScreenState extends State<RecogidasScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withValues(alpha: 0.1),
                       border: Border.all(color: color),
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -274,15 +284,20 @@ class _RecogidasScreenState extends State<RecogidasScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton.icon(
+                    onPressed: () => _abrirDetalle(recogida),
+                    icon: const Icon(Icons.info_outline),
+                    label: const Text('Ver'),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            DetalleRecogidaScreen(recogida: recogida),
+                        builder: (_) => EditarRecogidaScreen(recogida: recogida),
                       ),
                     ),
-                    icon: const Icon(Icons.info_outline),
-                    label: const Text('Ver'),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Editar'),
                   ),
                   const SizedBox(width: 8),
                   TextButton.icon(
@@ -315,7 +330,7 @@ class _RecogidasScreenState extends State<RecogidasScreen> {
           Icon(
             Icons.local_shipping,
             size: 64,
-            color: LoginovaColors.textSecondary.withOpacity(0.5),
+            color: LoginovaColors.textSecondary.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -371,34 +386,10 @@ class _RecogidasScreenState extends State<RecogidasScreen> {
                 const SnackBar(content: Text('Recogida eliminada')),
               );
             },
-            child: const Text('Eliminar'),
             style: TextButton.styleFrom(foregroundColor: LoginovaColors.error),
+            child: const Text('Eliminar'),
           ),
         ],
-      ),
-    );
-  }
-}
-                            icon: const Icon(Icons.delete),
-                            onPressed: () async {
-                              await provider.eliminarRecogida(item.id);
-                            },
-                          ),
-                        ],
-                      ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                DetalleRecogidaScreen(recogida: item),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
       ),
     );
   }

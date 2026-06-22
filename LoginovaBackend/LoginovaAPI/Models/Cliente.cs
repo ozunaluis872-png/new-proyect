@@ -9,6 +9,7 @@ namespace LoginovaAPI.Models;
 public class Cliente
 {
     /// <summary>Identificador unico del cliente.</summary>
+    [Column("id")]
     public int Id { get; set; }
 
     /// <summary>Nombre completo del cliente.</summary>

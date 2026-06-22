@@ -74,7 +74,7 @@ class _EditarRecogidaScreenState extends State<EditarRecogidaScreen> {
         listen: false,
       ).actualizarRecogida(actualizado);
       if (!mounted) return;
-      Navigator.pop(context);
+      Navigator.pop(context, actualizado);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
