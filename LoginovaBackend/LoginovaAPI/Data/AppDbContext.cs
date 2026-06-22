@@ -40,15 +40,18 @@ public class AppDbContext : DbContext
     public DbSet<HistorialEstado> HistorialEstados =>
         Set<HistorialEstado>();
 
+    public DbSet<AuditoriaLog> Auditoria =>
+        Set<AuditoriaLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<Usuario>().ToTable("usuarios");
-        modelBuilder.Entity<Role>().ToTable("roles");
-        modelBuilder.Entity<Cliente>().ToTable("clientes");
-        modelBuilder.Entity<Recogida>().ToTable("recogidas");
-        modelBuilder.Entity<Evidencia>().ToTable("evidencias");
+        modelBuilder.Entity<Usuario>().ToTable("Usuarios");
+        modelBuilder.Entity<Role>().ToTable("Roles");
+        modelBuilder.Entity<Cliente>().ToTable("Clientes");
+        modelBuilder.Entity<Recogida>().ToTable("Recogidas");
+        modelBuilder.Entity<Evidencia>().ToTable("Evidencias");
 
         modelBuilder.Entity<Usuario>()
             .HasIndex(usuario => usuario.Correo)
@@ -60,8 +63,9 @@ public class AppDbContext : DbContext
                 new Role { Id = 2, Nombre = "Operador", Descripcion = "Realiza recogidas" },
                 new Role { Id = 3, Nombre = "Cliente", Descripcion = "Consulta servicios" });
 
-        modelBuilder.Entity<Ubicacion>().ToTable("ubicaciones");
-        modelBuilder.Entity<HistorialEstado>().ToTable("historial_estados");
+        modelBuilder.Entity<Ubicacion>().ToTable("Ubicaciones");
+        modelBuilder.Entity<HistorialEstado>().ToTable("HistorialEstados");
+        modelBuilder.Entity<AuditoriaLog>().ToTable("AuditoriaLogs");
 
         modelBuilder.Entity<Ubicacion>()
             .HasOne(ubicacion => ubicacion.Usuario)

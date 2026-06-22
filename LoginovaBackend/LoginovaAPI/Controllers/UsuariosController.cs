@@ -15,11 +15,13 @@ public class UsuariosController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly PasswordHasher _passwordHasher;
+    private readonly AuditoriaService _auditoria;
 
-    public UsuariosController(AppDbContext context, PasswordHasher passwordHasher)
+    public UsuariosController(AppDbContext context, PasswordHasher passwordHasher, AuditoriaService auditoria)
     {
         _context = context;
         _passwordHasher = passwordHasher;
+        _auditoria = auditoria;
     }
 
     [HttpGet]
@@ -64,6 +66,19 @@ public class UsuariosController : ControllerBase
         _context.Usuarios.Add(usuario);
         await _context.SaveChangesAsync();
 
+        // Registrar en auditoría
+        var usuarioIdClaim = int.TryParse(User.FindFirst("userId")?.Value, out var uid) ? uid : 0;
+        await _auditoria.RegistrarCambio(
+            usuarioIdClaim,
+            "Usuario",
+            usuario.Id,
+            "CREATE",
+            null,
+            new { usuario.Nombre, usuario.Correo, Rol = request.Rol },
+            $"Usuario creado: {usuario.Nombre} ({usuario.Correo})",
+            HttpContext.Connection.RemoteIpAddress?.ToString()
+        );
+
         usuario.Role = role;
         return CreatedAtAction(nameof(GetAll), ToResponse(usuario));
     }
@@ -89,6 +104,9 @@ public class UsuariosController : ControllerBase
             return BadRequest(new { mensaje = $"Rol invalido: {request.Rol}" });
         }
 
+        // Guardar valores anteriores para auditoría
+        var valoresAnteriores = new { usuario.Nombre, usuario.Correo, usuario.Rol };
+
         usuario.Nombre = request.Nombre;
         usuario.Correo = request.Correo;
         usuario.RoleId = role.Id;
@@ -99,6 +117,20 @@ public class UsuariosController : ControllerBase
         }
 
         await _context.SaveChangesAsync();
+
+        // Registrar en auditoría
+        var usuarioIdClaim = int.TryParse(User.FindFirst("userId")?.Value, out var uid) ? uid : 0;
+        await _auditoria.RegistrarCambio(
+            usuarioIdClaim,
+            "Usuario",
+            usuario.Id,
+            "UPDATE",
+            valoresAnteriores,
+            new { usuario.Nombre, usuario.Correo, Rol = request.Rol },
+            $"Usuario #{usuario.Id} actualizado",
+            HttpContext.Connection.RemoteIpAddress?.ToString()
+        );
+
         return NoContent();
     }
 
@@ -112,8 +144,25 @@ public class UsuariosController : ControllerBase
             return NotFound();
         }
 
+        // Guardar valores para auditoría antes de eliminar
+        var valoresEliminados = new { usuario.Id, usuario.Nombre, usuario.Correo, usuario.Rol };
+
         _context.Usuarios.Remove(usuario);
         await _context.SaveChangesAsync();
+
+        // Registrar en auditoría
+        var usuarioIdClaim = int.TryParse(User.FindFirst("userId")?.Value, out var uid) ? uid : 0;
+        await _auditoria.RegistrarCambio(
+            usuarioIdClaim,
+            "Usuario",
+            id,
+            "DELETE",
+            valoresEliminados,
+            null,
+            $"Usuario eliminado: {usuario.Nombre}",
+            HttpContext.Connection.RemoteIpAddress?.ToString()
+        );
+
         return NoContent();
     }
 

@@ -6,6 +6,7 @@ import '../providers/recogida_provider.dart';
 import '../themes/app_theme.dart';
 import 'recogidas_screen.dart';
 import 'perfil_screen.dart';
+import 'mapa_screen.dart';
 
 /// Dashboard principal que muestra estadísticas y opciones de navegación.
 class HomeScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const DashboardView(),
     const RecogidasScreen(),
+    const MapaScreen(),
     const PerfilScreen(),
   ];
 
@@ -56,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.local_shipping),
             label: 'Recogidas',
           ),
+          NavigationDestination(icon: Icon(Icons.map), label: 'Mapa'),
           NavigationDestination(icon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),

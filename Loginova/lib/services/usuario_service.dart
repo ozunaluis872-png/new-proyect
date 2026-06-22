@@ -21,4 +21,16 @@ class UsuarioService {
     final data = jsonDecode(response.body) as List<dynamic>;
     return data.map((item) => Usuario.fromJson(item)).toList();
   }
+
+  /// Elimina un usuario del servidor por su identificador.
+  Future<void> eliminarUsuario(int id) async {
+    final response = await http.delete(
+      Uri.parse('${ApiService.baseUrl}/usuarios/$id'),
+      headers: ApiService.jsonHeaders,
+    );
+
+    if (response.statusCode != 204) {
+      throw Exception('No se pudo eliminar el usuario');
+    }
+  }
 }

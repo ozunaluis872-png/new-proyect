@@ -7,6 +7,7 @@ import '../screens/home_screen.dart';
 import '../screens/recogidas_screen.dart';
 import '../screens/crear_recogida_screen.dart';
 import '../screens/mapa_screen.dart';
+import '../screens/admin_dashboard_screen.dart';
 
 /// Definición de todas las rutas nombradas de la aplicación.
 class AppRoutes {
@@ -19,5 +20,6 @@ class AppRoutes {
     '/recogidas': (context) => const RecogidasScreen(),
     '/crear-recogida': (context) => const CrearRecogidaScreen(),
     '/mapa': (context) => const MapaScreen(),
+    '/admin': (context) => const AdminDashboardScreen(),
   };
 }

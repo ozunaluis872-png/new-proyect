@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'providers/auth_provider.dart';
 import 'providers/usuario_provider.dart';
+import 'providers/usuarios_provider.dart';
 import 'providers/recogida_provider.dart';
 import 'themes/app_theme.dart';
 
@@ -23,6 +24,7 @@ class LoginovaApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => UsuarioProvider()),
+        ChangeNotifierProvider(create: (_) => UsuariosProvider()),
         ChangeNotifierProvider(create: (_) => RecogidaProvider()),
       ],
 

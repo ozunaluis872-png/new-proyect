@@ -1,6 +1,7 @@
 using LoginovaAPI.Data;
 using LoginovaAPI.DTOs;
 using LoginovaAPI.Models;
+using LoginovaAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,13 +18,15 @@ namespace LoginovaAPI.Controllers;
 public class RecogidasController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly AuditoriaService _auditoria;
 
     /// <summary>
-    /// Constructor que recibe el contexto de datos.
+    /// Constructor que recibe el contexto de datos y servicio de auditoría.
     /// </summary>
-    public RecogidasController(AppDbContext context)
+    public RecogidasController(AppDbContext context, AuditoriaService auditoria)
     {
         _context = context;
+        _auditoria = auditoria;
     }
 
     [HttpGet]
@@ -82,6 +85,19 @@ public class RecogidasController : ControllerBase
         _context.Recogidas.Add(recogida);
         await _context.SaveChangesAsync();
 
+        // Registrar en auditoría
+        var usuarioIdClaim = int.TryParse(User.FindFirst("userId")?.Value, out var uid) ? uid : 0;
+        await _auditoria.RegistrarCambio(
+            usuarioIdClaim,
+            "Recogida",
+            recogida.Id,
+            "CREATE",
+            null,
+            new { recogida.ClienteId, recogida.UsuarioId, recogida.Estado, recogida.CantidadPaquetes, recogida.Observaciones },
+            $"Nueva recogida creada para cliente #{recogida.ClienteId}",
+            HttpContext.Connection.RemoteIpAddress?.ToString()
+        );
+
         return CreatedAtAction(nameof(GetById), new { id = recogida.Id }, ToResponse(recogida));
     }
 
@@ -107,6 +123,16 @@ public class RecogidasController : ControllerBase
             return BadRequest(new { mensaje = "Usuario no existe" });
         }
 
+        // Guardar valores anteriores para auditoría
+        var valoresAnteriores = new
+        {
+            recogida.ClienteId,
+            recogida.UsuarioId,
+            recogida.Estado,
+            recogida.CantidadPaquetes,
+            recogida.Observaciones,
+        };
+
         recogida.ClienteId = request.ClienteId;
         recogida.UsuarioId = request.UsuarioId;
         recogida.Estado = request.Estado;
@@ -114,6 +140,20 @@ public class RecogidasController : ControllerBase
         recogida.Observaciones = request.Observaciones;
 
         await _context.SaveChangesAsync();
+
+        // Registrar en auditoría
+        var usuarioIdClaim = int.TryParse(User.FindFirst("userId")?.Value, out var uid) ? uid : 0;
+        await _auditoria.RegistrarCambio(
+            usuarioIdClaim,
+            "Recogida",
+            recogida.Id,
+            "UPDATE",
+            valoresAnteriores,
+            new { recogida.ClienteId, recogida.UsuarioId, recogida.Estado, recogida.CantidadPaquetes, recogida.Observaciones },
+            $"Recogida #{recogida.Id} actualizada",
+            HttpContext.Connection.RemoteIpAddress?.ToString()
+        );
+
         return NoContent();
     }
 
@@ -129,8 +169,33 @@ public class RecogidasController : ControllerBase
             return NotFound();
         }
 
+        // Guardar valores para auditoría antes de eliminar
+        var valoresEliminados = new
+        {
+            recogida.Id,
+            recogida.ClienteId,
+            recogida.UsuarioId,
+            recogida.Estado,
+            recogida.CantidadPaquetes,
+            recogida.Observaciones,
+        };
+
         _context.Recogidas.Remove(recogida);
         await _context.SaveChangesAsync();
+
+        // Registrar en auditoría
+        var usuarioIdClaim = int.TryParse(User.FindFirst("userId")?.Value, out var uid) ? uid : 0;
+        await _auditoria.RegistrarCambio(
+            usuarioIdClaim,
+            "Recogida",
+            id,
+            "DELETE",
+            valoresEliminados,
+            null,
+            $"Recogida #{id} eliminada",
+            HttpContext.Connection.RemoteIpAddress?.ToString()
+        );
+
         return NoContent();
     }
 
