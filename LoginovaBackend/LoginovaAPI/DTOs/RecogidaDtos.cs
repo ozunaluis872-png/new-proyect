@@ -7,7 +7,9 @@ public record RecogidaRequest(
     int? UsuarioId,
     [Required] string Estado,
     [Range(0, int.MaxValue)] int CantidadPaquetes,
-    string? Observaciones);
+    string? Observaciones,
+    decimal? Latitud,
+    decimal? Longitud);
 
 public record RecogidaResponse(
     int Id,
@@ -16,4 +18,7 @@ public record RecogidaResponse(
     string Estado,
     int CantidadPaquetes,
     string? Observaciones,
-    List<string> Evidencias);
+    List<string> Evidencias,
+    decimal? Latitud,
+    decimal? Longitud,
+    DateTime? FechaCreacion);

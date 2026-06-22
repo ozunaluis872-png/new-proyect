@@ -29,9 +29,9 @@ class LocationData {
 
 /// Servicio para manejo de ubicaciones geográficas en tiempo real.
 /// Maneja permisos, obtención de coordenadas y envío periódico al backend.
+/// Emite actualizaciones de ubicación mediante Stream para UI reactivo.
 class LocationService {
-  static const int _updateIntervalSeconds = 30; // Actualizar cada 30 segundos
-  static const int _fastestIntervalSeconds = 10; // Mínimo intervalo
+  static const int _updateIntervalSeconds = 15; // Actualizar cada 15 segundos
   static const int _distanceFilterMeters =
       5; // Mínimo de metros para actualizar
 
@@ -39,6 +39,13 @@ class LocationService {
   Timer? _uploadTimer;
   Position? _lastPosition;
   bool _isTracking = false;
+
+  // StreamController para emitir ubicaciones en tiempo real
+  final StreamController<LocationData> _locationController =
+      StreamController<LocationData>.broadcast();
+
+  /// Stream de ubicaciones en tiempo real
+  Stream<LocationData> get locationStream => _locationController.stream;
 
   /// Solicita permisos de ubicación al dispositivo.
   static Future<bool> requestPermission() async {
@@ -106,7 +113,19 @@ class LocationService {
         Geolocator.getPositionStream(locationSettings: locationSettings).listen(
           (Position position) {
             _lastPosition = position;
+            // Emitir ubicación mediante stream
+            final locationData = LocationData(
+              latitude: position.latitude,
+              longitude: position.longitude,
+              accuracy: position.accuracy,
+              timestamp: DateTime.now(),
+            );
+            _locationController.add(locationData);
+            // Enviar al backend
             _uploadLocationToBackend(position);
+          },
+          onError: (e) {
+            print('Error en stream de ubicación: $e');
           },
         );
 
@@ -205,5 +224,6 @@ class LocationService {
   /// Libera recursos.
   void dispose() {
     stopTracking();
+    _locationController.close();
   }
 }

@@ -1,14 +1,18 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../models/cliente.dart';
 import '../models/recogida.dart';
 import '../providers/auth_provider.dart';
+import '../providers/location_provider.dart';
 import '../providers/recogida_provider.dart';
 import '../services/cliente_service.dart';
+import '../services/location_service.dart';
 import '../themes/app_theme.dart';
 
-/// Pantalla profesional para crear una nueva recogida
+/// Pantalla profesional para crear una nueva recogida con selección de ubicación
 class CrearRecogidaScreen extends StatefulWidget {
   const CrearRecogidaScreen({super.key});
 
@@ -18,17 +22,21 @@ class CrearRecogidaScreen extends StatefulWidget {
 
 class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controladores de cliente
   final _nombreController = TextEditingController();
   final _telefonoController = TextEditingController();
   final _direccionController = TextEditingController();
   final _ciudadController = TextEditingController();
-  
+
   // Controladores de recogida
   final _paquetesController = TextEditingController();
   final _observacionesController = TextEditingController();
-  
+
+  // Ubicación de la recogida
+  double? _selectedLatitude;
+  double? _selectedLongitude;
+
   bool _guardando = false;
 
   @override
@@ -42,9 +50,67 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
     super.dispose();
   }
 
+  /// Abre el selector de ubicación en el mapa
+  Future<void> _selectLocation() async {
+    final locationProvider = Provider.of<LocationProvider>(
+      context,
+      listen: false,
+    );
+
+    final result = await Navigator.push<Map<String, double>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _LocationPickerScreen(
+          initialLocation:
+              _selectedLatitude != null && _selectedLongitude != null
+              ? LatLng(_selectedLatitude!, _selectedLongitude!)
+              : null,
+          currentLocation: locationProvider.currentLocation,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedLatitude = result['latitude'];
+        _selectedLongitude = result['longitude'];
+      });
+
+      // Obtener dirección a partir de coordenadas
+      try {
+        final address = await LocationService.getAddressFromCoordinates(
+          _selectedLatitude!,
+          _selectedLongitude!,
+        );
+
+        if (address != null && mounted) {
+          _direccionController.text = address;
+        }
+      } catch (e) {
+        print('Error obteniendo dirección: $e');
+      }
+    }
+  }
+
   /// Guarda la nueva recogida
   Future<void> _guardarRecogida() async {
     if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor selecciona una ubicación en el mapa'),
+          backgroundColor: LoginovaColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (_selectedLatitude == null || _selectedLongitude == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor selecciona una ubicación en el mapa'),
+          backgroundColor: LoginovaColors.error,
+        ),
+      );
       return;
     }
 
@@ -52,11 +118,13 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
 
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      final recogidaProvider =
-          Provider.of<RecogidaProvider>(context, listen: false);
+      final recogidaProvider = Provider.of<RecogidaProvider>(
+        context,
+        listen: false,
+      );
 
       if (auth.usuario == null) {
-        throw Exception('SesiÃ³n invÃ¡lida');
+        throw Exception('Sesión inválida');
       }
 
       // Crear cliente
@@ -70,10 +138,10 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
         ),
       );
 
-      // Crear recogida
+      // Crear recogida con ubicación
       final cantidadPaquetes =
           int.tryParse(_paquetesController.text.trim()) ?? 1;
-      
+
       final recogida = Recogida(
         id: 0,
         clienteId: cliente.id,
@@ -82,19 +150,22 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
         cantidadPaquetes: cantidadPaquetes,
         observaciones: _observacionesController.text.trim(),
         evidencias: const [],
+        latitud: _selectedLatitude,
+        longitud: _selectedLongitude,
+        fechaCreacion: DateTime.now(),
       );
 
       await recogidaProvider.agregarRecogida(recogida);
 
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Recogida creada exitosamente'),
           backgroundColor: LoginovaColors.success,
         ),
       );
-      
+
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
@@ -114,10 +185,7 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nueva Recogida'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Nueva Recogida'), elevation: 0),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -126,19 +194,25 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // SecciÃ³n de cliente
-                _buildSectionTitle('InformaciÃ³n del Cliente'),
+                // Sección de ubicación
+                _buildSectionTitle('Ubicación de la Recogida'),
+                const SizedBox(height: 16),
+                _buildLocationSelector(),
+                const SizedBox(height: 32),
+
+                // Sección de cliente
+                _buildSectionTitle('Información del Cliente'),
                 const SizedBox(height: 16),
                 _buildClienteFields(),
                 const SizedBox(height: 32),
 
-                // SecciÃ³n de recogida
+                // Sección de recogida
                 _buildSectionTitle('Detalles de la Recogida'),
                 const SizedBox(height: 16),
                 _buildRecogidaFields(),
                 const SizedBox(height: 32),
 
-                // Botones de acciÃ³n
+                // Botones de acción
                 _buildActionButtons(),
                 const SizedBox(height: 16),
               ],
@@ -149,14 +223,85 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
     );
   }
 
-  /// Construye el tÃ­tulo de una secciÃ³n
+  /// Construye el selector de ubicación
+  Widget _buildLocationSelector() {
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: LoginovaColors.primary, width: 2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _selectLocation,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: LoginovaColors.primary,
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Selecciona la ubicación en el mapa',
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                          const SizedBox(height: 4),
+                          if (_selectedLatitude != null &&
+                              _selectedLongitude != null)
+                            Text(
+                              '${_selectedLatitude!.toStringAsFixed(4)}, ${_selectedLongitude!.toStringAsFixed(4)}',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: LoginovaColors.success,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            )
+                          else
+                            Text(
+                              'Toca para abrir el mapa',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: LoginovaColors.textSecondary,
+                                  ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 16),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Construye el título de una sección
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: LoginovaColors.primary,
-            fontWeight: FontWeight.bold,
-          ),
+        color: LoginovaColors.primary,
+        fontWeight: FontWeight.bold,
+      ),
     );
   }
 
@@ -188,13 +333,13 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
           textInputAction: TextInputAction.next,
           keyboardType: TextInputType.phone,
           decoration: InputDecoration(
-            labelText: 'TelÃ©fono',
+            labelText: 'Teléfono',
             hintText: 'Ej: +34 123 456 789',
             prefixIcon: const Icon(Icons.phone),
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Por favor ingresa el telÃ©fono';
+              return 'Por favor ingresa el teléfono';
             }
             return null;
           },
@@ -204,13 +349,16 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
           controller: _direccionController,
           textInputAction: TextInputAction.next,
           decoration: InputDecoration(
-            labelText: 'DirecciÃ³n',
-            hintText: 'Ej: Calle Principal 123',
+            labelText: 'Dirección',
+            hintText: 'Se llena automáticamente desde el mapa',
             prefixIcon: const Icon(Icons.location_on),
+            suffixIcon: _selectedLatitude != null
+                ? const Icon(Icons.check, color: LoginovaColors.success)
+                : null,
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Por favor ingresa la direcciÃ³n';
+              return 'Por favor ingresa la dirección';
             }
             return null;
           },
@@ -254,7 +402,7 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
             }
             final cantidad = int.tryParse(value);
             if (cantidad == null || cantidad <= 0) {
-              return 'Ingresa un nÃºmero vÃ¡lido mayor a 0';
+              return 'Ingresa un número válido mayor a 0';
             }
             return null;
           },
@@ -275,7 +423,7 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
     );
   }
 
-  /// Construye los botones de acciÃ³n
+  /// Construye los botones de acción
   Widget _buildActionButtons() {
     return Row(
       children: [
@@ -302,6 +450,190 @@ class _CrearRecogidaScreenState extends State<CrearRecogidaScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Pantalla para seleccionar ubicación en un mapa interactivo
+class _LocationPickerScreen extends StatefulWidget {
+  final LatLng? initialLocation;
+  final LocationData? currentLocation;
+
+  const _LocationPickerScreen({this.initialLocation, this.currentLocation});
+
+  @override
+  State<_LocationPickerScreen> createState() => _LocationPickerScreenState();
+}
+
+class _LocationPickerScreenState extends State<_LocationPickerScreen> {
+  late MapController _mapController;
+  LatLng? _selectedLocation;
+  late LatLng _centerLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+
+    // Usar ubicación inicial, ubicación actual o ubicación por defecto
+    if (widget.initialLocation != null) {
+      _selectedLocation = widget.initialLocation;
+      _centerLocation = widget.initialLocation!;
+    } else if (widget.currentLocation != null) {
+      _centerLocation = LatLng(
+        widget.currentLocation!.latitude,
+        widget.currentLocation!.longitude,
+      );
+      _selectedLocation = _centerLocation;
+    } else {
+      _centerLocation = const LatLng(6.2442, -75.5812); // Medellín por defecto
+    }
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Selecciona la ubicación'),
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _centerLocation,
+              initialZoom: 14,
+              onTap: (tapPosition, point) {
+                setState(() {
+                  _selectedLocation = point;
+                });
+              },
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.loginova.app',
+              ),
+              if (_selectedLocation != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _selectedLocation!,
+                      width: 50,
+                      height: 50,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: LoginovaColors.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: LoginovaColors.primary.withValues(alpha: 0.5),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.location_on,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          // Centro del mapa (reticula)
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: LoginovaColors.primary, width: 2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Panel de información inferior
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Ubicación seleccionada',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (_selectedLocation != null) ...[
+                    Text(
+                      '${_selectedLocation!.latitude.toStringAsFixed(6)}, ${_selectedLocation!.longitude.toStringAsFixed(6)}',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: LoginovaColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _selectedLocation != null
+                          ? () {
+                              Navigator.pop(context, {
+                                'latitude': _selectedLocation!.latitude,
+                                'longitude': _selectedLocation!.longitude,
+                              });
+                            }
+                          : null,
+                      child: const Text('Confirmar ubicación'),
+                    ),
+                  ] else ...[
+                    Text(
+                      'Toca en el mapa para seleccionar una ubicación',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: LoginovaColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

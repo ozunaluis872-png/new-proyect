@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../services/location_service.dart';
 
 /// Provider que gestiona el estado del rastreo de ubicación.
 /// Proporciona acceso a la posición actual y controla el inicio/parada del rastreo.
+/// Emite cambios de ubicación en tiempo real mediante Stream.
 class LocationProvider extends ChangeNotifier {
   final LocationService _locationService = LocationService();
 
@@ -10,11 +12,15 @@ class LocationProvider extends ChangeNotifier {
   bool _isTracking = false;
   bool _isLoading = false;
   String? _error;
+  StreamSubscription<LocationData>? _locationSubscription;
 
   LocationData? get currentLocation => _currentLocation;
   bool get isTracking => _isTracking;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  /// Stream de cambios de ubicación para escuchar en tiempo real
+  Stream<LocationData> get locationStream => _locationService.locationStream;
 
   /// Obtiene la ubicación actual del dispositivo.
   Future<bool> getCurrentLocation() async {
@@ -64,6 +70,19 @@ class LocationProvider extends ChangeNotifier {
       _isTracking = true;
       _error = null;
       notifyListeners();
+
+      // Suscribirse al stream de ubicación para emitir cambios
+      _locationSubscription = _locationService.locationStream.listen(
+        (LocationData location) {
+          _currentLocation = location;
+          notifyListeners();
+        },
+        onError: (e) {
+          _error = 'Error en rastreo: $e';
+          notifyListeners();
+        },
+      );
+
       return true;
     } catch (e) {
       _error = 'Error iniciando rastreo: $e';
@@ -76,6 +95,7 @@ class LocationProvider extends ChangeNotifier {
   /// Detiene el rastreo de ubicación.
   void stopTracking() {
     _locationService.stopTracking();
+    _locationSubscription?.cancel();
     _isTracking = false;
     notifyListeners();
   }
@@ -92,6 +112,7 @@ class LocationProvider extends ChangeNotifier {
   /// Limpia recursos.
   @override
   void dispose() {
+    _locationSubscription?.cancel();
     _locationService.dispose();
     super.dispose();
   }

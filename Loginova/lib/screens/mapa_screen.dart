@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -5,9 +6,14 @@ import 'package:provider/provider.dart';
 
 import '../models/recogida.dart';
 import '../providers/recogida_provider.dart';
+import '../providers/location_provider.dart';
+import '../providers/proximity_provider.dart';
+import '../services/location_service.dart';
+import '../services/proximity_service.dart';
 import '../themes/app_theme.dart';
+import '../widgets/proximity_indicator.dart';
 
-/// Pantalla interactiva que muestra recogidas en un mapa de Google Maps.
+/// Pantalla interactiva que muestra recogidas en un mapa con ubicación en tiempo real del operador.
 class MapaScreen extends StatefulWidget {
   const MapaScreen({super.key});
 
@@ -18,57 +24,211 @@ class MapaScreen extends StatefulWidget {
 class _MapaScreenState extends State<MapaScreen> {
   final MapController _mapController = MapController();
   final List<Marker> _markers = [];
+  LocationData? _operatorLocation;
+  bool _showOperatorMarker = false;
+  Timer? _markerDebounce;
 
   // Ubicación por defecto: Centro de Medellín, Colombia
   static const LatLng _ubicacionPorDefecto = LatLng(6.2442, -75.5812);
-
   static const double _zoomInicial = 13;
 
   @override
+  void initState() {
+    super.initState();
+    _initializeLocationTracking();
+  }
+
+  /// Inicializa el rastreo de ubicación del operador
+  Future<void> _initializeLocationTracking() async {
+    try {
+      final locationProvider = Provider.of<LocationProvider>(
+        context,
+        listen: false,
+      );
+      final proximityProvider = Provider.of<ProximityProvider>(
+        context,
+        listen: false,
+      );
+      final recogidaProvider = Provider.of<RecogidaProvider>(
+        context,
+        listen: false,
+      );
+
+      // Obtener ubicación actual
+      await locationProvider.getCurrentLocation();
+
+      if (mounted && locationProvider.currentLocation != null) {
+        setState(() {
+          _operatorLocation = locationProvider.currentLocation;
+          _showOperatorMarker = true;
+        });
+
+        // Iniciar rastreo de proximidad
+        await proximityProvider.startProximityTracking(
+          recogidaProvider.recogidas,
+        );
+      }
+    } catch (e) {
+      print('Error inicializando ubicación: $e');
+    }
+  }
+
+  @override
   void dispose() {
+    _markerDebounce?.cancel();
     _mapController.dispose();
     super.dispose();
   }
 
-  /// Genera coordenadas pseudoaleatorias basadas en el ID de recogida
-  /// para simular ubicaciones diferentes en un área realista
-  LatLng _generarCoordenadas(int recogidaId) {
-    // Usar el ID como seed para generar coordenadas en un área
-    // alrededor de Medellín (radio de ~5km)
-    final seed = recogidaId * 12345;
-    final latOffset = ((seed % 1000) - 500) / 100000;
-    final lngOffset = ((seed ~/ 1000 % 1000) - 500) / 100000;
+  /// Actualiza marcadores con debounce para evitar rebuilds masivos
+  void _scheduleMarkersUpdate(
+    List<Recogida> recogidas,
+    Map<int, ProximityInfo> proximities,
+    LocationData? location,
+  ) {
+    _markerDebounce?.cancel();
+    _markerDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      final newMarkers = List<Marker>.from(
+        _buildPickupMarkers(recogidas, proximities),
+      );
+      if (_showOperatorMarker && location != null) {
+        _operatorLocation = location;
+        final operatorMarker = _buildOperatorMarker();
+        newMarkers.add(operatorMarker);
+      }
+      setState(() {
+        _markers.clear();
+        _markers.addAll(newMarkers);
+      });
+    });
+  }
 
-    return LatLng(
-      _ubicacionPorDefecto.latitude + latOffset,
-      _ubicacionPorDefecto.longitude + lngOffset,
+  /// Convierte LocationData a LatLng
+  LatLng _locationDataToLatLng(LocationData location) {
+    return LatLng(location.latitude, location.longitude);
+  }
+
+  /// Construye el marcador del operador (ubicación actual)
+  Marker _buildOperatorMarker() {
+    if (_operatorLocation == null) return null as dynamic;
+
+    return Marker(
+      point: _locationDataToLatLng(_operatorLocation!),
+      width: 50,
+      height: 50,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: LoginovaColors.primary,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: LoginovaColors.primary.withValues(alpha: 0.5),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(6),
+            child: const Icon(Icons.location_on, color: Colors.white, size: 20),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Tu ubicación',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.black87,
+              fontWeight: FontWeight.bold,
+              backgroundColor: Colors.white70,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
-  /// Actualiza los marcadores del mapa basado en recogidas
-  void _actualizarMarcadores(List<Recogida> recogidas) {
-    _markers.clear();
+  /// Construye marcadores para las recogidas
+  List<Marker> _buildPickupMarkers(
+    List<Recogida> recogidas,
+    Map<int, ProximityInfo> proximities,
+  ) {
+    final markers = <Marker>[];
 
     for (final recogida in recogidas) {
-      final coords = _generarCoordenadas(recogida.id);
-      final color = _getColorPorEstado(recogida.estado);
+      if (recogida.latitud == null || recogida.longitud == null) continue;
 
-      _markers.add(
+      final coords = LatLng(recogida.latitud!, recogida.longitud!);
+      final proximityInfo = proximities[recogida.id];
+      final color = _getColorPorEstado(recogida.estado);
+      final isClosed = proximityInfo?.isClosed ?? false;
+
+      markers.add(
         Marker(
           point: coords,
-          width: 42,
-          height: 42,
+          width: isClosed ? 60 : 50,
+          height: isClosed ? 60 : 50,
           child: GestureDetector(
-            onTap: () => _mostrarDetalles(recogida),
-            child: Icon(Icons.location_on, color: color, size: 36),
+            onTap: () => _mostrarDetallesRecogida(recogida, proximityInfo),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (isClosed)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.5),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.inventory_2,
+                    color: Colors.white,
+                    size: isClosed ? 24 : 20,
+                  ),
+                ),
+                if (isClosed)
+                  Positioned(
+                    top: -5,
+                    right: -5,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: LoginovaColors.success,
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       );
     }
 
-    if (mounted) {
-      setState(() {});
-    }
+    return markers;
   }
 
   /// Obtiene el color según el estado de la recogida
@@ -89,38 +249,89 @@ class _MapaScreenState extends State<MapaScreen> {
     }
   }
 
-  /// Muestra detalles de recogida al hacer clic en marcador
-  void _mostrarDetalles(Recogida recogida) {
+  /// Muestra detalles de recogida con información de proximidad
+  void _mostrarDetallesRecogida(
+    Recogida recogida,
+    ProximityInfo? proximityInfo,
+  ) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Recogida #${recogida.id}',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 12),
-            _buildDetailRow('Cliente ID', '#${recogida.clienteId}'),
-            _buildDetailRow('Operador ID', '#${recogida.usuarioId}'),
-            _buildDetailRow('Paquetes', '${recogida.cantidadPaquetes}'),
-            _buildDetailRow('Estado', recogida.estado),
-            if (recogida.observaciones.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildDetailRow('Observaciones', recogida.observaciones),
-            ],
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cerrar'),
+      isScrollControlled: true,
+      builder: (context) => SingleChildScrollView(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Encabezado
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Recogida #${recogida.id}',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getColorPorEstado(
+                        recogida.estado,
+                      ).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      recogida.estado,
+                      style: TextStyle(
+                        color: _getColorPorEstado(recogida.estado),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+
+              // Información de proximidad si está disponible
+              if (proximityInfo != null) ...[
+                ProximityIndicator(proximityInfo: proximityInfo),
+                const SizedBox(height: 16),
+              ],
+
+              // Detalles de la recogida
+              _buildDetailRow('Cliente ID', '#${recogida.clienteId}'),
+              _buildDetailRow('Operador ID', '#${recogida.usuarioId}'),
+              _buildDetailRow(
+                'Cantidad de paquetes',
+                '${recogida.cantidadPaquetes}',
+              ),
+
+              if (recogida.latitud != null && recogida.longitud != null) ...[
+                _buildDetailRow(
+                  'Coordenadas',
+                  '${recogida.latitud!.toStringAsFixed(4)}, ${recogida.longitud!.toStringAsFixed(4)}',
+                ),
+              ],
+
+              if (recogida.observaciones.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildDetailRow('Observaciones', recogida.observaciones),
+              ],
+
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cerrar'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -133,8 +344,17 @@ class _MapaScreenState extends State<MapaScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
-          Expanded(child: Text(value, overflow: TextOverflow.ellipsis)),
+          Text(
+            '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
         ],
       ),
     );
@@ -143,55 +363,178 @@ class _MapaScreenState extends State<MapaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mapa de Recogidas'), elevation: 0),
-      body: Consumer<RecogidaProvider>(
-        builder: (context, provider, _) {
-          // Si llegan recogidas desde el provider, las pintamos sobre el mapa.
-          if (_markers.isEmpty && provider.recogidas.isNotEmpty) {
-            Future.microtask(() {
-              _actualizarMarcadores(provider.recogidas);
-            });
-          }
-
-          return Stack(
-            children: [
-              FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: _ubicacionPorDefecto,
-                  initialZoom: _zoomInicial,
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.loginova.app',
-                  ),
-                  MarkerLayer(markers: _markers),
-                ],
-              ),
-              if (provider.cargando)
-                const Center(
-                  child: CircularProgressIndicator(
-                    backgroundColor: Colors.white,
-                  ),
-                ),
-              Positioned(
-                bottom: 20,
-                right: 20,
-                child: FloatingActionButton(
-                  onPressed: () async {
-                    await provider.cargarRecogidas();
-                    _actualizarMarcadores(provider.recogidas);
-                  },
-                  tooltip: 'Recargar mapa',
-                  child: const Icon(Icons.refresh),
-                ),
-              ),
-            ],
-          );
-        },
+      appBar: AppBar(
+        title: const Text('Mapa de Recogidas en Tiempo Real'),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.my_location),
+            onPressed: () async {
+              // Centrar en ubicación del operador
+              if (_operatorLocation != null) {
+                _mapController.move(
+                  _locationDataToLatLng(_operatorLocation!),
+                  _zoomInicial,
+                );
+              }
+            },
+            tooltip: 'Ir a mi ubicación',
+          ),
+        ],
       ),
+      body: Consumer3<RecogidaProvider, LocationProvider, ProximityProvider>(
+        builder:
+            (
+              context,
+              recogidaProvider,
+              locationProvider,
+              proximityProvider,
+              _,
+            ) {
+              // Programar actualización de marcadores con debounce
+              if (recogidaProvider.recogidas.isNotEmpty) {
+                _scheduleMarkersUpdate(
+                  recogidaProvider.recogidas,
+                  proximityProvider.proximities,
+                  locationProvider.currentLocation,
+                );
+              }
+
+              return Stack(
+                children: [
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: _ubicacionPorDefecto,
+                      initialZoom: _zoomInicial,
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.loginova.app',
+                      ),
+                      MarkerLayer(markers: _markers),
+                    ],
+                  ),
+
+                  // Indicador de carga
+                  if (recogidaProvider.cargando)
+                    const Center(
+                      child: CircularProgressIndicator(
+                        backgroundColor: Colors.white,
+                      ),
+                    ),
+
+                  // Panel de información en la esquina
+                  if (proximityProvider.proximities.isNotEmpty)
+                    Positioned(
+                      top: 16,
+                      left: 16,
+                      right: 16,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Resumen de Recogidas',
+                              style: Theme.of(context).textTheme.labelLarge,
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildSummaryItem(
+                                  label: 'Cercanas',
+                                  value: proximityProvider
+                                      .getClosePickups()
+                                      .length
+                                      .toString(),
+                                  color: LoginovaColors.success,
+                                ),
+                                _buildSummaryItem(
+                                  label: 'Total',
+                                  value: proximityProvider.proximities.length
+                                      .toString(),
+                                  color: LoginovaColors.info,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // Botones de acción
+                  Positioned(
+                    bottom: 20,
+                    right: 20,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FloatingActionButton(
+                          onPressed: () async {
+                            await recogidaProvider.cargarRecogidas();
+                          },
+                          tooltip: 'Recargar recogidas',
+                          child: const Icon(Icons.refresh),
+                        ),
+                        const SizedBox(height: 12),
+                        FloatingActionButton(
+                          mini: true,
+                          onPressed: () async {
+                            if (locationProvider.currentLocation != null) {
+                              _mapController.move(
+                                _locationDataToLatLng(
+                                  locationProvider.currentLocation!,
+                                ),
+                                _zoomInicial,
+                              );
+                            }
+                          },
+                          tooltip: 'Ir a mi ubicación',
+                          child: const Icon(Icons.my_location),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(label, style: const TextStyle(fontSize: 10)),
+      ],
     );
   }
 }

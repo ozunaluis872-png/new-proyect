@@ -80,6 +80,8 @@ public class RecogidasController : ControllerBase
             Estado = string.IsNullOrWhiteSpace(request.Estado) ? "Pendiente" : request.Estado,
             CantidadPaquetes = request.CantidadPaquetes,
             Observaciones = request.Observaciones,
+            Latitud = request.Latitud,
+            Longitud = request.Longitud,
         };
 
         _context.Recogidas.Add(recogida);
@@ -93,7 +95,7 @@ public class RecogidasController : ControllerBase
             recogida.Id,
             "CREATE",
             null,
-            new { recogida.ClienteId, recogida.UsuarioId, recogida.Estado, recogida.CantidadPaquetes, recogida.Observaciones },
+            new { recogida.ClienteId, recogida.UsuarioId, recogida.Estado, recogida.CantidadPaquetes, recogida.Observaciones, recogida.Latitud, recogida.Longitud },
             $"Nueva recogida creada para cliente #{recogida.ClienteId}",
             HttpContext.Connection.RemoteIpAddress?.ToString()
         );
@@ -131,6 +133,8 @@ public class RecogidasController : ControllerBase
             recogida.Estado,
             recogida.CantidadPaquetes,
             recogida.Observaciones,
+            recogida.Latitud,
+            recogida.Longitud,
         };
 
         recogida.ClienteId = request.ClienteId;
@@ -138,6 +142,8 @@ public class RecogidasController : ControllerBase
         recogida.Estado = request.Estado;
         recogida.CantidadPaquetes = request.CantidadPaquetes;
         recogida.Observaciones = request.Observaciones;
+        recogida.Latitud = request.Latitud;
+        recogida.Longitud = request.Longitud;
 
         await _context.SaveChangesAsync();
 
@@ -149,7 +155,7 @@ public class RecogidasController : ControllerBase
             recogida.Id,
             "UPDATE",
             valoresAnteriores,
-            new { recogida.ClienteId, recogida.UsuarioId, recogida.Estado, recogida.CantidadPaquetes, recogida.Observaciones },
+            new { recogida.ClienteId, recogida.UsuarioId, recogida.Estado, recogida.CantidadPaquetes, recogida.Observaciones, recogida.Latitud, recogida.Longitud },
             $"Recogida #{recogida.Id} actualizada",
             HttpContext.Connection.RemoteIpAddress?.ToString()
         );
@@ -211,6 +217,9 @@ public class RecogidasController : ControllerBase
             recogida.Estado,
             recogida.CantidadPaquetes,
             recogida.Observaciones,
-            recogida.Evidencias.Select(evidencia => evidencia.FotoUrl).ToList());
+            recogida.Evidencias.Select(evidencia => evidencia.FotoUrl).ToList(),
+            recogida.Latitud,
+            recogida.Longitud,
+            recogida.FechaCreacion);
     }
 }

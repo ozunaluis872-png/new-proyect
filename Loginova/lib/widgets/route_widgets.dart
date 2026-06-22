@@ -9,10 +9,10 @@ class RouteInfoCard extends StatelessWidget {
   final VoidCallback? onClose;
 
   const RouteInfoCard({
-    Key? key,
+    super.key,
     required this.route,
     this.onClose,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -123,11 +123,11 @@ class RouteCalculatorButton extends StatelessWidget {
   final bool isLoading;
 
   const RouteCalculatorButton({
-    Key? key,
+    super.key,
     this.label = 'Calcular Ruta',
     required this.onPressed,
     this.isLoading = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +154,7 @@ class RouteCalculatorButton extends StatelessWidget {
 
 /// Widget que muestra opciones para rastreo de ubicación.
 class LocationTrackingWidget extends StatefulWidget {
-  const LocationTrackingWidget({Key? key}) : super(key: key);
+  const LocationTrackingWidget({super.key});
 
   @override
   State<LocationTrackingWidget> createState() => _LocationTrackingWidgetState();

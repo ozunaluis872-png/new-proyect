@@ -7,6 +7,9 @@ class Recogida {
   final int cantidadPaquetes;
   final String observaciones;
   final List<String> evidencias;
+  final double? latitud; // Ubicación de la recogida
+  final double? longitud; // Ubicación de la recogida
+  final DateTime? fechaCreacion;
 
   /// Constructor que requiere todos los campos de una recogida.
   Recogida({
@@ -17,6 +20,9 @@ class Recogida {
     required this.cantidadPaquetes,
     required this.observaciones,
     required this.evidencias,
+    this.latitud,
+    this.longitud,
+    this.fechaCreacion,
   });
 
   /// Crea una instancia desde un JSON devuelto por el servidor.
@@ -29,6 +35,11 @@ class Recogida {
       cantidadPaquetes: json['cantidadPaquetes'],
       observaciones: json['observaciones'],
       evidencias: List<String>.from(json['evidencias'] ?? []),
+      latitud: json['latitud']?.toDouble(),
+      longitud: json['longitud']?.toDouble(),
+      fechaCreacion: json['fechaCreacion'] != null
+          ? DateTime.parse(json['fechaCreacion'])
+          : null,
     );
   }
 
@@ -42,6 +53,9 @@ class Recogida {
       'cantidadPaquetes': cantidadPaquetes,
       'observaciones': observaciones,
       'evidencias': evidencias,
+      'latitud': latitud,
+      'longitud': longitud,
+      'fechaCreacion': fechaCreacion?.toIso8601String(),
     };
   }
 
@@ -53,6 +67,16 @@ class Recogida {
       'estado': estado,
       'cantidadPaquetes': cantidadPaquetes,
       'observaciones': observaciones,
+      'latitud': latitud,
+      'longitud': longitud,
     };
+  }
+
+  /// Obtiene un par [latitud, longitud] si ambas están disponibles
+  List<double>? get coordenadas {
+    if (latitud != null && longitud != null) {
+      return [latitud!, longitud!];
+    }
+    return null;
   }
 }
